@@ -29,15 +29,26 @@ fi
 
 # Create ECS cluster if it doesn't exist
 echo "Checking ECS cluster..."
-aws ecs describe-clusters --cluster $CLUSTER_NAME --region $AWS_REGION > /dev/null 2>&1
+CLUSTER_EXISTS=$(aws ecs describe-clusters --cluster $CLUSTER_NAME --region $AWS_REGION --query 'clusters[0].status' --output text 2>/dev/null)
 
-if [ $? -ne 0 ]; then
+if [ "$CLUSTER_EXISTS" != "ACTIVE" ]; then
     echo "Creating ECS cluster: $CLUSTER_NAME"
     aws ecs create-cluster --cluster-name $CLUSTER_NAME --region $AWS_REGION
     
     # Wait for cluster to be active
     echo "Waiting for cluster to be active..."
     aws ecs wait cluster-active --cluster $CLUSTER_NAME --region $AWS_REGION
+    
+    # Verify cluster was created
+    CLUSTER_STATUS=$(aws ecs describe-clusters --cluster $CLUSTER_NAME --region $AWS_REGION --query 'clusters[0].status' --output text)
+    if [ "$CLUSTER_STATUS" != "ACTIVE" ]; then
+        echo "Error: Failed to create ECS cluster. Please check AWS Console or try again."
+        exit 1
+    fi
+    
+    echo "ECS cluster created successfully"
+else
+    echo "ECS cluster already exists"
 fi
 
 # Create CloudWatch Logs log group if it doesn't exist
@@ -57,9 +68,9 @@ echo "Task definition registered: $TASK_DEFINITION_ARN"
 
 # Check if service exists
 echo "Checking if service exists..."
-aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --region $AWS_REGION > /dev/null 2>&1
+SERVICE_EXISTS=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --region $AWS_REGION --query 'services[0].status' --output text 2>/dev/null)
 
-if [ $? -ne 0 ]; then
+if [ "$SERVICE_EXISTS" != "ACTIVE" ]; then
     # Create new service
     echo "Creating ECS service: $SERVICE_NAME"
     aws ecs create-service \
@@ -73,6 +84,15 @@ if [ $? -ne 0 ]; then
         --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_IDS}],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
         --region $AWS_REGION \
         --enable-execute-command
+    
+    # Verify service was created
+    SERVICE_STATUS=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --region $AWS_REGION --query 'services[0].status' --output text 2>/dev/null)
+    if [ "$SERVICE_STATUS" != "ACTIVE" ]; then
+        echo "Error: Failed to create ECS service. Please check AWS Console or try again."
+        exit 1
+    fi
+    
+    echo "ECS service created successfully"
 else
     # Update existing service
     echo "Updating ECS service: $SERVICE_NAME"
@@ -82,7 +102,16 @@ else
         --task-definition $TASK_DEFINITION_ARN \
         --region $AWS_REGION \
         --force-new-deployment
+    
+    echo "ECS service update initiated"
 fi
+
+# Wait for service to stabilize
+echo "Waiting for service to stabilize..."
+aws ecs wait services-stable \
+    --cluster $CLUSTER_NAME \
+    --services $SERVICE_NAME \
+    --region $AWS_REGION
 
 echo "Deployment initiated successfully!"
 echo "Service URL: http://<ALB_DNS_NAME>:8080"  # Replace with your ALB DNS or EC2 public IP
