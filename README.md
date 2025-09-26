@@ -5,10 +5,13 @@ A Spring Boot application for managing invoices and payments for small businesse
 ## Features
 
 - Create, read, update, and delete invoices
-- Track payment status of invoices
+- Track payment status of invoices (PAID, UNPAID, OVERDUE)
 - Generate invoice reports
+- Calculate totals, taxes, and discounts
 - RESTful API endpoints for integration
-- Built with Spring Boot and JPA/Hibernate
+- Built with Spring Boot, JPA/Hibernate, and MySQL
+- Containerized with Docker
+- Deployable to AWS ECS with Fargate
 
 ## Prerequisites
 
@@ -43,16 +46,43 @@ A Spring Boot application for managing invoices and payments for small businesse
 ## API Endpoints
 
 ### Invoices
-- `GET /api/invoices` - Get all invoices
-- `GET /api/invoices/{id}` - Get invoice by ID
-- `POST /api/invoices` - Create a new invoice
-- `PUT /api/invoices/{id}` - Update an existing invoice
-- `DELETE /api/invoices/{id}` - Delete an invoice
+- `GET /invoices` - Get all invoices
+- `GET /invoices/{id}` - Get invoice by ID
+- `POST /invoices` - Create a new invoice
+- `PUT /invoices/{id}` - Update an existing invoice
+- `DELETE /invoices/{id}` - Delete an invoice
+- `GET /invoices/status/{status}` - Get invoices by status (PAID, UNPAID, OVERDUE)
+- `GET /invoices/overdue` - Get all overdue invoices
+- `PATCH /invoices/{id}/status` - Update invoice status
+- `GET /invoices/total-outstanding` - Get total outstanding amount
 
-### Payments
-- `GET /api/payments` - Get all payments
-- `POST /api/payments` - Process a payment
-- `GET /api/payments/invoice/{invoiceId}` - Get payments for a specific invoice
+### Health Check
+- `GET /actuator/health` - Application health status
+- `GET /actuator/info` - Application information
+- `GET /actuator/metrics` - Application metrics
+
+### Example Request (Create Invoice)
+```http
+POST /invoices
+Content-Type: application/json
+
+{
+  "customerName": "John Doe",
+  "customerEmail": "john.doe@example.com",
+  "issueDate": "2025-09-26",
+  "dueDate": "2025-10-26",
+  "items": [
+    {
+      "description": "Web Development Services",
+      "quantity": 10,
+      "unitPrice": 100.00
+    }
+  ],
+  "taxRate": 15.0,
+  "discount": 0.0,
+  "notes": "Thank you for your business!"
+}
+```
 
 ## Project Structure
 
@@ -67,20 +97,152 @@ src/main/java/com/sazimtandabuzo/smallbusinessinvoices/
 
 ## Configuration
 
-Configure your database and other settings in `src/main/resources/application.properties`:
+### Application Properties
+Configure your settings in `src/main/resources/application.properties`:
 
 ```properties
-# Database Configuration
-spring.datasource.url=jdbc:mysql://localhost:3306/your_database
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-spring.jpa.hibernate.ddl-auto=update
-
 # Server Configuration
 server.port=8080
+
+# Actuator Endpoints
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
+
+# Logging
+logging.level.org.springframework=INFO
+logging.level.com.sazimtandabuzo=DEBUG
 ```
 
-## AWS Free Tier Deployment Guide
+### Production Properties (`application-prod.properties`)
+```properties
+# Database Configuration
+spring.datasource.url=jdbc:mysql://your-rds-endpoint:3306/your_database?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# Hikari Connection Pool
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.idle-timeout=30000
+spring.datasource.hikari.max-lifetime=2000000
+
+# JPA/Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# Transaction Management
+spring.transaction.default-timeout=30s
+spring.transaction.rollback-on-commit-failure=true
+
+# Actuator Endpoints
+management.endpoints.web.base-path=/actuator
+management.endpoint.health.show-details=always
+management.health.db.enabled=true
+management.health.defaults.enabled=true
+
+# Logging
+logging.level.org.springframework=INFO
+logging.level.com.sazimtandabuzo=DEBUG
+logging.file.name=app.log
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+```
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SPRING_DATASOURCE_URL` | Database connection URL | `jdbc:mysql://localhost:3306/your_db` |
+| `SPRING_DATASOURCE_USERNAME` | Database username | `dbuser` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `dbpassword` |
+| `SERVER_PORT` | Application server port | `8080` |
+| `SPRING_PROFILES_ACTIVE` | Active Spring profile | `prod` |
+
+## Monitoring and Maintenance
+
+### Health Checks
+- The application exposes health check endpoints at `/actuator/health`
+- Configure your load balancer to use this endpoint for health checks
+
+### Logs
+- Application logs are written to `app.log` in the working directory
+- In ECS, logs are streamed to CloudWatch Logs
+
+### Metrics
+- Application metrics are available at `/actuator/metrics`
+- Integrate with Prometheus or AWS CloudWatch for monitoring
+
+## Troubleshooting
+
+### Common Issues
+1. **Database Connection Issues**
+   - Verify database is running and accessible
+   - Check database credentials and permissions
+   - Ensure the database user has proper privileges
+
+2. **Health Check Failures**
+   - Verify the application is running on the correct port
+   - Check application logs for errors
+   - Ensure the health check path is correct in the load balancer
+
+3. **Deployment Issues**
+   - Check ECS service events for errors
+   - Verify task definition and container configuration
+   - Ensure the container has proper permissions to access ECR
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Deployment
+
+### Prerequisites
+- Java 17 or higher
+- Maven 3.6.3 or higher
+- Docker (for containerization)
+- AWS Account (for cloud deployment)
+
+### Local Development
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/small-business-invoices.git
+   cd small-business-invoices
+   ```
+
+2. **Configure the database**
+   - Create a MySQL database
+   - Update `src/main/resources/application.properties` with your database credentials
+
+3. **Build and run**
+   ```bash
+   mvn spring-boot:run
+   ```
+   The application will be available at `http://localhost:8080`
+
+### Docker
+1. **Build the Docker image**
+   ```bash
+   ./docker-build.sh
+   ```
+
+2. **Run the container**
+   ```bash
+   docker run -p 8080:8080 small-business-invoices:latest
+   ```
+
+## AWS ECS Deployment Guide
+
+### Prerequisites
+- AWS CLI configured with appropriate permissions
+- Docker installed and running
+- ECR repository created for the application
+- VPC with public subnets and internet gateway
+- Security group allowing inbound traffic on port 80
+- RDS MySQL database (or other compatible database)
 
 ### Prerequisites
 - AWS Free Tier account (sign up at [AWS Free Tier](https://aws.amazon.com/free/))
@@ -88,7 +250,57 @@ server.port=8080
 - Git installed on your local machine
 - Basic knowledge of AWS services
 
-### Step 1: Set up an EC2 Instance
+### 1. Set up ECR Repository
+```bash
+aws ecr create-repository --repository-name small-business-invoices --region eu-north-1
+```
+
+### 2. Build and Push Docker Image
+1. Authenticate Docker to your ECR registry:
+   ```bash
+   aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 810772959397.dkr.ecr.eu-north-1.amazonaws.com
+   ```
+
+2. Build and tag the image:
+   ```bash
+   ./docker-build.sh
+   docker tag small-business-invoices:latest 810772959397.dkr.ecr.eu-north-1.amazonaws.com/small-business-invoices:latest
+   ```
+
+3. Push the image to ECR:
+   ```bash
+   docker push 810772959397.dkr.ecr.eu-north-1.amazonaws.com/small-business-invoices:latest
+   ```
+
+### 3. Set up ECS Cluster and Service
+1. Create an ECS cluster:
+   ```bash
+   aws ecs create-cluster --cluster-name small-business-cluster --region eu-north-1
+   ```
+
+2. Create a task definition (see `ecs/task-definition.json` for reference)
+
+3. Update the task definition with your ECR image URI and database configuration
+
+4. Create the ECS service:
+   ```bash
+   aws ecs create-service \
+     --cluster small-business-cluster \
+     --service-name small-business-invoices-service \
+     --task-definition small-business-invoices:1 \
+     --desired-count 1 \
+     --launch-type FARGATE \
+     --network-configuration "awsvpcConfiguration={subnets=[subnet-007a8c2be665983f2],securityGroups=[sg-035e28f552080156a],assignPublicIp=ENABLED}" \
+     --region eu-north-1
+   ```
+
+### 4. Update and Deploy
+1. After making changes, rebuild and push the Docker image
+2. Create a new task definition revision
+3. Update the service with the new task definition:
+   ```bash
+   ./ecs-deploy.sh
+   ```
 1. Log in to AWS Management Console
 2. Navigate to EC2 service
 3. Click "Launch Instance"

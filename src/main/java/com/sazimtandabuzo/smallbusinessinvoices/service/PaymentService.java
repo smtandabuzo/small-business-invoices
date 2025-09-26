@@ -108,6 +108,11 @@ public class PaymentService {
     }
     
     private void updateInvoiceStatus(Invoice invoice, BigDecimal newTotalPaid) {
+        // If invoice is already PAID, keep it as PAID regardless of new payment amount
+        if (invoice.getStatus() == PaymentStatus.PAID) {
+            return;
+        }
+        
         int comparison = newTotalPaid.compareTo(BigDecimal.ZERO);
         
         if (comparison == 0) {
