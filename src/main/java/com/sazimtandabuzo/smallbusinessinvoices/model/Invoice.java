@@ -31,30 +31,47 @@ public class Invoice {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
     
+    @Column(name = "amount_paid", precision = 10, scale = 2)
+    private BigDecimal amountPaid = BigDecimal.ZERO;
+    
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PaymentStatus status = PaymentStatus.PENDING;
+    private PaymentStatus status;
     
     @Column(columnDefinition = "TEXT")
     private String description;
     
-    public Invoice() {
-        // Default constructor
+    @PrePersist
+    protected void onCreate() {
+        if (this.status == null) {
+            this.status = this.dueDate.isBefore(LocalDate.now()) ? 
+                PaymentStatus.OVERDUE : PaymentStatus.PENDING;
+        }
+        if (this.amountPaid == null) {
+            this.amountPaid = BigDecimal.ZERO;
+        }
+        
+        // Update status based on payment
+        updateStatusBasedOnPayment();
     }
     
-    // Custom constructor for creating new invoices
-    public Invoice(String customerName, String customerEmail, LocalDate issueDate, 
-                  LocalDate dueDate, BigDecimal amount, String description) {
-        this.customerName = customerName;
-        this.customerEmail = customerEmail;
-        this.issueDate = issueDate;
-        this.dueDate = dueDate;
-        this.amount = amount;
-        this.description = description;
+    @PreUpdate
+    protected void onUpdate() {
+        updateStatusBasedOnPayment();
+    }
+    
+    private void updateStatusBasedOnPayment() {
+        if (this.amountPaid == null) {
+            this.amountPaid = BigDecimal.ZERO;
+        }
         
-        // Set status based on due date
-        if (dueDate.isBefore(LocalDate.now())) {
-            this.status = PaymentStatus.OVERDUE;
+        if (this.amountPaid.compareTo(BigDecimal.ZERO) == 0) {
+            this.status = this.dueDate.isBefore(LocalDate.now()) ? 
+                PaymentStatus.OVERDUE : PaymentStatus.PENDING;
+        } else if (this.amountPaid.compareTo(this.amount) >= 0) {
+            this.status = PaymentStatus.PAID;
+        } else {
+            this.status = PaymentStatus.PARTIALLY_PAID;
         }
     }
 }

@@ -80,12 +80,165 @@ spring.jpa.hibernate.ddl-auto=update
 server.port=8080
 ```
 
+## AWS Free Tier Deployment Guide
+
+### Prerequisites
+- AWS Free Tier account (sign up at [AWS Free Tier](https://aws.amazon.com/free/))
+- AWS CLI installed and configured with your credentials
+- Git installed on your local machine
+- Basic knowledge of AWS services
+
+### Step 1: Set up an EC2 Instance
+1. Log in to AWS Management Console
+2. Navigate to EC2 service
+3. Click "Launch Instance"
+4. Choose "Amazon Linux 2 AMI (HVM), SSD Volume Type" (Free Tier eligible)
+5. Select t2.micro instance type (Free Tier eligible)
+6. Configure instance details (use defaults for Free Tier)
+7. Add storage (8GB gp2 is Free Tier eligible)
+8. Add tags (optional)
+9. Configure Security Group:
+   - Add Rule: SSH (port 22)
+   - Add Rule: HTTP (port 80)
+   - Add Rule: Custom TCP (port 8080)
+10. Review and launch
+11. Create a new key pair, download it, and keep it secure
+
+### Step 2: Set up RDS Database
+1. Navigate to RDS service
+2. Click "Create database"
+3. Choose "Standard Create" and "MySQL"
+4. Select "Free tier" template
+5. Configure settings:
+   - DB instance identifier: `small-business-db`
+   - Master username: `admin`
+   - Master password: [create a strong password]
+6. Choose db.t3.micro instance class (Free Tier eligible)
+7. Configure storage (20GB is Free Tier eligible)
+8. Enable public access (for demo purposes)
+9. Create a new VPC security group
+10. Set initial database name: `small_business`
+11. Click "Create database"
+12. Note the endpoint (hostname) of your RDS instance
+
+### Step 3: Update Application Configuration
+1. Update `src/main/resources/application-prod.properties`:
+   ```properties
+   # Database Configuration
+   spring.datasource.url=jdbc:mysql://[RDS_ENDPOINT]:3306/small_business?createDatabaseIfNotExist=true
+   spring.datasource.username=admin
+   spring.datasource.password=[YOUR_DB_PASSWORD]
+   spring.jpa.hibernate.ddl-auto=update
+   
+   # Server Configuration
+   server.port=8080
+   server.servlet.context-path=/api
+   
+   # Production settings
+   spring.profiles.active=prod
+   ```
+
+### Step 4: Package the Application
+```bash
+mvn clean package -DskipTests
+```
+
+### Step 5: Deploy to EC2
+1. Connect to your EC2 instance:
+   ```bash
+   chmod 400 your-key-pair.pem
+   ssh -i "your-key-pair.pem" ec2-user@your-ec2-public-dns
+   ```
+
+2. Install Java 17 and Maven:
+   ```bash
+   sudo amazon-linux-extras install java-openjdk17 -y
+   sudo wget https://repos.fedorapeople.org/repos/dchen/apache-maven/epel-apache-maven.repo -O /etc/yum.repos.d/epel-apache-maven.repo
+   sudo sed -i 's/\$releasever/7/g' /etc/yum.repos.d/epel-apache-maven.repo
+   sudo yum install -y apache-maven
+   ```
+
+3. Install and configure Nginx:
+   ```bash
+   sudo amazon-linux-extras install nginx1 -y
+   sudo systemctl start nginx
+   sudo systemctl enable nginx
+   ```
+
+4. Configure Nginx as reverse proxy:
+   ```bash
+   sudo nano /etc/nginx/conf.d/springboot.conf
+   ```
+   Add:
+   ```nginx
+   server {
+       listen 80;
+       server_name your-domain.com www.your-domain.com;
+       
+       location /api {
+           proxy_pass http://localhost:8080;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_set_header X-Forwarded-Port $server_port;
+       }
+   }
+   ```
+   Test and reload Nginx:
+   ```bash
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+### Step 6: Set up SSL with Let's Encrypt (Optional but Recommended)
+```bash
+sudo yum install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+```
+
+### Step 7: Run the Application
+1. Copy your JAR file to EC2 (from your local machine):
+   ```bash
+   scp -i "your-key-pair.pem" target/your-application.jar ec2-user@your-ec2-public-dns:/home/ec2-user/
+   ```
+
+2. On EC2, create a systemd service:
+   ```bash
+   sudo nano /etc/systemd/system/small-business.service
+   ```
+   Add:
+   ```ini
+   [Unit]
+   Description=Small Business Invoices
+   After=syslog.target
+   
+   [Service]
+   User=ec2-user
+   ExecStart=/usr/bin/java -jar /home/ec2-user/your-application.jar --spring.profiles.active=prod
+   SuccessExitStatus=143
+   
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Start and enable the service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable small-business
+   sudo systemctl start small-business
+   ```
+
+### Step 8: Verify Deployment
+- Check application logs: `journalctl -u small-business -f`
+- Access your API at: `http://your-ec2-public-dns/api/`
+
 ## Built With
 
 - [Spring Boot](https://spring.io/projects/spring-boot)
 - [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
 - [Maven](https://maven.apache.org/)
 - [MySQL](https://www.mysql.com/)
+- [AWS EC2](https://aws.amazon.com/ec2/)
+- [AWS RDS](https://aws.amazon.com/rds/)
 
 ## Contributing
 
