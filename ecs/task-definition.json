@@ -1,0 +1,48 @@
+{
+  "family": "small-business-invoices",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::810772959397:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "small-business-invoices",
+      "image": "810772959397.dkr.ecr.eu-north-1.amazonaws.com/small-business-invoices:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "prod"
+        },
+        {
+          "name": "SPRING_DATASOURCE_URL",
+          "value": "jdbc:mysql://small-business-db.cfka0qwomp9i.eu-north-1.rds.amazonaws.com:3306/small_business"
+        },
+        {
+          "name": "SPRING_DATASOURCE_USERNAME",
+          "value": "your_username"
+        },
+        {
+          "name": "SPRING_DATASOURCE_PASSWORD",
+          "value": "Ch4ng31sg00d"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/small-business-invoices",
+          "awslogs-region": "eu-north-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024"
+}
