@@ -22,15 +22,27 @@
         },
         {
           "name": "SPRING_DATASOURCE_URL",
-          "value": "jdbc:mysql://small-business-db.cfka0qwomp9i.eu-north-1.rds.amazonaws.com:3306/small_business"
+          "value": "jdbc:mysql://small-business-db.cfka0qwomp9i.eu-north-1.rds.amazonaws.com:3306/small_business?useSSL=false&allowPublicKeyRetrieval=true"
         },
         {
           "name": "SPRING_DATASOURCE_USERNAME",
-          "value": "your_username"
+          "value": "admin"
         },
         {
           "name": "SPRING_DATASOURCE_PASSWORD",
           "value": "Ch4ng31sg00d"
+        },
+        {
+          "name": "SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT",
+          "value": "org.hibernate.dialect.MySQL8Dialect"
+        },
+        {
+          "name": "SPRING_JPA_HIBERNATE_DDL_AUTO",
+          "value": "update"
+        },
+        {
+          "name": "SPRING_DATASOURCE_DRIVER_CLASS_NAME",
+          "value": "com.mysql.cj.jdbc.Driver"
         }
       ],
       "logConfiguration": {
