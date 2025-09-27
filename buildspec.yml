@@ -1,0 +1,51 @@
+version: 0.2
+
+env:
+  variables:
+    # Using the existing ECR repository
+    ECR_REPOSITORY_URI: "810772959397.dkr.ecr.eu-north-1.amazonaws.com/small-business-invoices"
+    IMAGE_TAG: latest  # Will be overridden during build
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - echo Installing Maven...
+      - export MAVEN_VERSION=3.9.5
+      - wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+      - tar xzvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
+      - export PATH=$PATH:$(pwd)/apache-maven-${MAVEN_VERSION}/bin
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - mvn clean package -DskipTests
+
+  build:
+    commands:
+      - echo Building the Docker image...
+      - docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:latest
+      - echo Writing image definitions file...
+      - printf '[{"name":"small-business-invoices","imageUri":"%s"}]' $ECR_REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yml
+    - taskdef.json
+  name: $(date +%Y-%m-%dT%H%M%S)

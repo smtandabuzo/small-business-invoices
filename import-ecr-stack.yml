@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Import existing ECR repository into CloudFormation'
+
+Resources:
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    Properties:
+      RepositoryName: small-business-invoices
+      # No additional properties to avoid update conflicts
+
+Outputs:
+  ECRRepositoryURI:
+    Description: The URI of the ECR repository
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Export:
+      Name: small-business-ecr-repository-uri
