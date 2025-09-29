@@ -35,7 +35,7 @@ public class Invoice {
     @NotBlank(message = "Email is required")
     @Email(message = "Email should be valid")
     @Size(max = 100, message = "Email must be at most 50 characters")
-    @Column(nullable = false)
+    @Column(name = "customer_email", nullable = false)
     private String customerEmail;
     
     @NotNull(message = "Issue date is required")
