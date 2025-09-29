@@ -47,6 +47,7 @@ public class OpenAPIConfig {
         return GroupedOpenApi.builder()
                 .group("public-apis")
                 .pathsToMatch("/api/**")
+                .packagesToScan("com.sazimtandabuzo.smallbusinessinvoices.controller")
                 .build();
     }
 }
