@@ -10,7 +10,9 @@ import com.sazimtandabuzo.smallbusinessinvoices.model.PaymentMethod;
 import com.sazimtandabuzo.smallbusinessinvoices.model.PaymentStatus;
 import com.sazimtandabuzo.smallbusinessinvoices.repository.InvoiceRepository;
 import com.sazimtandabuzo.smallbusinessinvoices.repository.PaymentRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Slf4j
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -39,13 +43,8 @@ public class PaymentService {
     }
     
     @Transactional
-    public PaymentDTO recordPayment(PaymentRequest request) {
-        // Validate payment amount
-        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidPaymentException("Payment amount must be greater than zero");
-        }
-        
-        // Get the invoice
+    public PaymentDTO recordPayment(@Valid PaymentRequest request) {
+        // Get the invoice - will throw ResourceNotFoundException if not found
         Invoice invoice = getInvoiceOrThrow(request.getInvoiceId());
         
         // Check if invoice is already fully paid or cancelled
@@ -107,28 +106,43 @@ public class PaymentService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     
+    /**
+     * Updates the invoice status based on the payment amount and due date
+     * @param invoice The invoice to update
+     * @param newTotalPaid The new total paid amount including the latest payment
+     */
     private void updateInvoiceStatus(Invoice invoice, BigDecimal newTotalPaid) {
-        // If invoice is already PAID, keep it as PAID regardless of new payment amount
-        if (invoice.getStatus() == PaymentStatus.PAID) {
-            return;
-        }
+        LocalDateTime now = LocalDateTime.now();
+        boolean isOverdue = invoice.getDueDate().isBefore(now.toLocalDate());
         
-        int comparison = newTotalPaid.compareTo(BigDecimal.ZERO);
+        // Calculate payment status based on amount paid
+        int paymentComparison = newTotalPaid.compareTo(BigDecimal.ZERO);
+        int fullPaymentComparison = newTotalPaid.compareTo(invoice.getAmount());
         
-        if (comparison == 0) {
+        PaymentStatus newStatus;
+        
+        if (paymentComparison == 0) {
             // No payments made yet
-            invoice.setStatus(invoice.getDueDate().isBefore(LocalDateTime.now().toLocalDate()) ? 
-                    PaymentStatus.OVERDUE : PaymentStatus.PENDING);
-        } else if (newTotalPaid.compareTo(invoice.getAmount()) >= 0) {
-            // Fully paid
-            invoice.setStatus(PaymentStatus.PAID);
-        } else {
+            newStatus = isOverdue ? PaymentStatus.OVERDUE : PaymentStatus.PENDING;
+        } else if (fullPaymentComparison >= 0) {
+            // Fully paid (or overpaid)
+            newStatus = PaymentStatus.PAID;
+        } else if (paymentComparison > 0) {
             // Partially paid
-            invoice.setStatus(PaymentStatus.PARTIALLY_PAID);
+            newStatus = isOverdue ? PaymentStatus.PARTIALLY_PAID_OVERDUE : PaymentStatus.PARTIALLY_PAID;
+        } else {
+            // Shouldn't normally happen as payment amount is validated
+            newStatus = PaymentStatus.PENDING;
         }
         
-        // Save the updated invoice
-        invoiceRepository.save(invoice);
+        // Only update if status has changed
+        if (invoice.getStatus() != newStatus) {
+            invoice.setStatus(newStatus);
+            invoiceRepository.save(invoice);
+            
+            log.info("Updated invoice {} status to {} (paid: {}/{})", 
+                    invoice.getId(), newStatus, newTotalPaid, invoice.getAmount());
+        }
     }
     
     private Invoice getInvoiceOrThrow(Long invoiceId) {

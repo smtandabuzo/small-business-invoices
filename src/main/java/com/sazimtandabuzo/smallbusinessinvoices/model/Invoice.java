@@ -1,6 +1,7 @@
 package com.sazimtandabuzo.smallbusinessinvoices.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -20,24 +21,40 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @NotBlank(message = "Invoice number is required")
+    @Size(max = 50, message = "Invoice number cannot exceed 50 characters")
     @Column(nullable = false, unique = true)
     private String invoiceNumber;
     
+    @NotBlank(message = "Customer name is required")
+    @Pattern(regexp = "^[a-zA-Z0-9\s.,'-]+$", message = "Customer name contains invalid characters")
+    @Size(min = 2, max = 100, message = "Customer name must be between 2 and 100 characters")
     @Column(nullable = false)
     private String customerName;
     
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email should be valid")
+    @Size(max = 100, message = "Email must be at most 50 characters")
     @Column(nullable = false)
     private String customerEmail;
     
+    @NotNull(message = "Issue date is required")
     @Column(nullable = false)
     private LocalDate issueDate;
     
+    @NotNull(message = "Due date is required")
+    @FutureOrPresent(message = "Due date must be today or in the future")
     @Column(nullable = false)
     private LocalDate dueDate;
     
+    @NotNull(message = "Amount is required")
+    @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
+    @Digits(integer = 10, fraction = 2, message = "Amount must have up to 10 digits before and 2 after decimal")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
     
+    @DecimalMin(value = "0.00", message = "Amount paid cannot be negative")
+    @Digits(integer = 10, fraction = 2, message = "Amount paid must have up to 10 digits before and 2 after decimal")
     @Column(name = "amount_paid", precision = 10, scale = 2)
     private BigDecimal amountPaid = BigDecimal.ZERO;
     
@@ -45,6 +62,7 @@ public class Invoice {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
     
+    @Size(max = 1000, message = "Description cannot exceed 100 characters")
     @Column(columnDefinition = "TEXT")
     private String description;
     

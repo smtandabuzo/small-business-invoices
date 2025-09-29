@@ -18,6 +18,7 @@ A Spring Boot application for managing invoices and payments for small businesse
 - Java 17 or higher
 - Maven 3.6.3 or higher
 - MySQL 8.0 or higher (or your preferred database)
+- Lombok plugin for your IDE (for annotation processing)
 
 ## Getting Started
 
@@ -48,6 +49,246 @@ A Spring Boot application for managing invoices and payments for small businesse
 ### Invoices
 - `GET /invoices` - Get all invoices
 - `GET /invoices/{id}` - Get invoice by ID
+- `POST /invoices` - Create a new invoice
+- `PUT /invoices/{id}` - Update an existing invoice
+- `DELETE /invoices/{id}` - Delete an invoice
+
+### Payments
+- `POST /payments` - Record a payment
+- `GET /invoices/{invoiceId}/payments` - Get payments for an invoice
+- `DELETE /payments/{id}` - Delete a payment
+
+## Testing the Application
+
+### 1. Using cURL
+
+#### Create a New Invoice
+```bash
+curl -X POST http://localhost:8080/api/invoices \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerName": "John Doe",
+    "customerEmail": "john@example.com",
+    "amount": 999.99,
+    "dueDate": "2025-12-31",
+    "description": "Website Development Services"
+  }'
+```
+
+#### Record a Payment
+```bash
+curl -X POST http://localhost:8080/api/payments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invoiceId": 1,
+    "amount": 500.00,
+    "paymentDate": "2025-09-29T10:00:00",
+    "paymentMethod": "CREDIT_CARD",
+    "notes": "First installment"
+  }'
+```
+
+### 2. Using Postman
+
+#### Create Invoice Request
+- **Method**: POST
+- **URL**: `http://localhost:8080/api/invoices`
+- **Headers**: 
+  - `Content-Type: application/json`
+- **Body** (raw JSON):
+  ```json
+  {
+    "customerName": "Acme Corp",
+    "customerEmail": "billing@acmecorp.com",
+    "amount": 2500.00,
+    "dueDate": "2025-12-31",
+    "description": "Monthly Retainer - October 2025"
+  }
+  ```
+
+#### Record Payment Request
+- **Method**: POST
+- **URL**: `http://localhost:8080/api/payments`
+- **Headers**: 
+  - `Content-Type: application/json`
+- **Body** (raw JSON):
+  ```json
+  {
+    "invoiceId": 1,
+    "amount": 1250.00,
+    "paymentDate": "2025-09-29T14:30:00",
+    "paymentMethod": "BANK_TRANSFER",
+    "notes": "50% advance payment"
+  }
+  ```
+
+### 3. Using Web Browser
+
+You can use the Swagger UI for interactive testing:
+1. Start the application
+2. Open `http://localhost:8080/swagger-ui.html` in your browser
+3. Explore the API documentation and test endpoints directly from the UI
+
+### 4. Frontend Integration
+
+If you have the frontend application running:
+1. Ensure the backend is running on `http://localhost:8080`
+2. Open the frontend application in your browser
+3. Use the UI to create invoices and record payments
+4. View payment history and invoice status in real-time
+
+### Expected Responses
+
+#### Successful Invoice Creation (HTTP 201)
+```json
+{
+  "id": 1,
+  "invoiceNumber": "INV-2025-0001",
+  "customerName": "John Doe",
+  "customerEmail": "john@example.com",
+  "amount": 999.99,
+  "status": "PENDING",
+  "dueDate": "2025-12-31",
+  "createdAt": "2025-09-29T10:00:00"
+}
+```
+
+#### Successful Payment (HTTP 200)
+```json
+{
+  "id": 1,
+  "invoiceId": 1,
+  "amount": 500.00,
+  "paymentDate": "2025-09-29T10:00:00",
+  "paymentMethod": "CREDIT_CARD",
+  "notes": "First installment"
+}
+```
+
+#### Validation Error (HTTP 400)
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "status": 400,
+  "errors": {
+    "customerEmail": ["must be a well-formed email address"],
+    "amount": ["must be greater than 0"]
+  }
+}
+```
+
+#### Not Found Error (HTTP 404)
+```json
+{
+  "timestamp": "2025-09-29T10:05:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Invoice not found with id: 999"
+}
+```
+
+## Testing Payment Status Updates
+
+### Test Cases for Payment Status Transitions
+
+1. **Initial Invoice Creation**
+   - **Action**: Create a new invoice
+   - **Expected Status**: `PENDING` (if due date is in future) or `OVERDUE` (if due date is in past)
+   - **Verification**: Check invoice status after creation
+
+2. **First Payment (Partial)**
+   ```http
+   POST /api/payments
+   Content-Type: application/json
+   
+   {
+     "invoiceId": 1,
+     "amount": 50.00,
+     "paymentDate": "2025-09-29T10:00:00",
+     "paymentMethod": "CREDIT_CARD"
+   }
+   ```
+   - **Expected Status**: `PARTIALLY_PAID` or `PARTIALLY_PAID_OVERDUE`
+
+3. **Full Payment**
+   ```http
+   POST /api/payments
+   Content-Type: application/json
+   
+   {
+     "invoiceId": 1,
+     "amount": 150.00,
+     "paymentDate": "2025-09-29T11:00:00",
+     "paymentMethod": "BANK_TRANSFER"
+   }
+   ```
+   - **Expected Status**: `PAID`
+   - **Verification**: No further payments should change the status from `PAID`
+
+4. **Overdue Invoice**
+   - Create an invoice with a past due date
+   - **Expected Status**: `OVERDUE`
+   - Make a partial payment
+   - **Expected Status**: `PARTIALLY_PAID_OVERDUE`
+
+5. **Payment Deletion**
+   ```http
+   DELETE /api/payments/1
+   ```
+   - **Expected**: Status should revert based on remaining payments
+   - If no payments remain, status should go back to `PENDING` or `OVERDUE`
+
+### Automated Testing
+
+You can use the following cURL commands to test the payment status flow:
+
+```bash
+# 1. Create a test invoice
+INVOCE_ID=$(curl -X POST http://localhost:8080/api/invoices \
+  -H "Content-Type: application/json" \
+  -d '{"customerName":"Test Customer","amount":200.00,"dueDate":"2025-12-31"}' | jq -r '.id')
+
+echo "Created invoice ID: $INVOCE_ID"
+
+# 2. Make partial payment
+PAYMENT_ID=$(curl -X POST http://localhost:8080/api/payments \
+  -H "Content-Type: application/json" \
+  -d "{\"invoiceId\":$INVOCE_ID,\"amount\":50.00,\"paymentDate\":\"2025-09-29T10:00:00\",\"paymentMethod\":\"CREDIT_CARD\"}" | jq -r '.id')
+
+echo "Created payment ID: $PAYMENT_ID"
+
+# 3. Check invoice status
+curl -X GET "http://localhost:8080/api/invoices/$INVOCE_ID"
+
+# 4. Delete payment (cleanup)
+curl -X DELETE "http://localhost:8080/api/payments/$PAYMENT_ID"
+
+# 5. Delete invoice (cleanup)
+curl -X DELETE "http://localhost:8080/api/invoices/$INVOCE_ID"
+```
+
+### Testing Tips
+
+1. **Test Validation**: 
+   - Submit forms with missing or invalid data to see proper error messages
+   - Try negative amounts, future payment dates, etc.
+
+2. **Check Status Updates**: 
+   - Verify status changes after each payment operation
+   - Check that status is updated in real-time
+
+3. **Test Edge Cases**: 
+   - **Overpayment**: Paying more than the invoice amount is allowed and will mark the invoice as `PAID` (the system will track the full payment amount but won't process refunds for overpayments)
+   - **Future/Past Dates**: Test with payment dates in the future and past
+   - **Concurrent Payments**: Verify proper handling when multiple payments are processed simultaneously
+   - **Partial Payments**: Test with multiple partial payments that sum to exactly the invoice amount
+   - **Zero Amount Payments**: Ensure the system rejects payments with zero or negative amounts
+
+4. **Check Database**: 
+   - Verify payment records are correctly linked to invoices
+   - Check that status changes are properly logged
+   - Verify transaction consistency
 - `POST /invoices` - Create a new invoice
 - `PUT /invoices/{id}` - Update an existing invoice
 - `DELETE /invoices/{id}` - Delete an invoice

@@ -4,6 +4,7 @@ public enum PaymentStatus {
     PENDING,
     PAID,
     PARTIALLY_PAID,
+    PARTIALLY_PAID_OVERDUE,
     OVERDUE,
     CANCELLED,
     REFUNDED
