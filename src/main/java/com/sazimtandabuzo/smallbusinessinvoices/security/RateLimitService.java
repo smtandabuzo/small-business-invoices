@@ -4,7 +4,7 @@ package com.sazimtandabuzo.smallbusinessinvoices.security;
 import com.sazimtandabuzo.smallbusinessinvoices.exception.RateLimitExceededException;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Bucket4j;
+//import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +24,7 @@ public class RateLimitService {
     }
 
     private Bucket newBucket(String key) {
-        return Bucket4j.builder()
+        return Bucket.builder()
                 .addLimit(Bandwidth.classic(BUCKET_CAPACITY,
                         Refill.intervally(REFILL_AMOUNT, Duration.ofMinutes(REFILL_DURATION))))
                 .build();
