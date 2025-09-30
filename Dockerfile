@@ -9,8 +9,9 @@ COPY src ./src
 # Build the application
 RUN mvn clean package -DskipTests
 
-# Add these lines to your Dockerfile
-RUN echo 'server.tomcat.additional-tomcat-connectors[0].property.allowed-http-methods=GET,HEAD,POST,PUT,DELETE,OPTIONS' >> /app/config/application.properties && \
+# Create config directory and add application properties
+RUN mkdir -p /app/config && \
+    echo 'server.tomcat.additional-tomcat-connectors[0].property.allowed-http-methods=GET,HEAD,POST,PUT,DELETE,OPTIONS' > /app/config/application.properties && \
     echo 'server.error.include-message=never' >> /app/config/application.properties && \
     echo 'server.error.include-binding-errors=never' >> /app/config/application.properties && \
     echo 'server.error.include-stacktrace=never' >> /app/config/application.properties
