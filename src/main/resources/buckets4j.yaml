@@ -1,0 +1,13 @@
+# src/main/resources/buckets4j.yaml
+bucket4j:
+  enabled: true
+  filters:
+    - cache-name: rate-limit-bucket
+      url: /api/.*
+      strategy: first
+      http-response-body: "{\"message\":\"Too many requests\"}"
+      rate-limits:
+        - bandwidths:
+            - capacity: 100
+              time: 1
+              unit: minutes

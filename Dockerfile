@@ -9,6 +9,12 @@ COPY src ./src
 # Build the application
 RUN mvn clean package -DskipTests
 
+# Add these lines to your Dockerfile
+RUN echo 'server.tomcat.additional-tomcat-connectors[0].property.allowed-http-methods=GET,HEAD,POST,PUT,DELETE,OPTIONS' >> /app/config/application.properties && \
+    echo 'server.error.include-message=never' >> /app/config/application.properties && \
+    echo 'server.error.include-binding-errors=never' >> /app/config/application.properties && \
+    echo 'server.error.include-stacktrace=never' >> /app/config/application.properties
+
 # Stage 2: Create the runtime image
 FROM eclipse-temurin:17-jre-jammy
 
