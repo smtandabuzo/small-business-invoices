@@ -15,6 +15,16 @@
         }
       ],
       "essential": true,
+      "secrets": [
+        {
+          "name": "SPRING_DATASOURCE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret:username::"
+        },
+        {
+          "name": "SPRING_DATASOURCE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret:password::"
+        }
+      ],
       "environment": [
         {
           "name": "SPRING_PROFILES_ACTIVE",
@@ -22,15 +32,7 @@
         },
         {
           "name": "SPRING_DATASOURCE_URL",
-          "value": "jdbc:mysql://small-business-db.cfka0qwomp9i.eu-north-1.rds.amazonaws.com:3306/small_business?useSSL=false&allowPublicKeyRetrieval=true"
-        },
-        {
-          "name": "SPRING_DATASOURCE_USERNAME",
-          "value": "admin"
-        },
-        {
-          "name": "SPRING_DATASOURCE_PASSWORD",
-          "value": "Ch4ng31sg00d"
+          "value": "jdbc:mysql://small-business-db.cfka0qwomp9i.eu-north-1.rds.amazonaws.com:3306/small_business?useSSL=true&requireSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC"
         },
         {
           "name": "SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT",
@@ -38,7 +40,7 @@
         },
         {
           "name": "SPRING_JPA_HIBERNATE_DDL_AUTO",
-          "value": "update"
+          "value": "validate"
         },
         {
           "name": "SPRING_DATASOURCE_DRIVER_CLASS_NAME",
