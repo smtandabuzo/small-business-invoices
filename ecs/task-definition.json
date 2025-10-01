@@ -18,11 +18,11 @@
       "secrets": [
         {
           "name": "SPRING_DATASOURCE_USERNAME",
-          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret:username::"
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret-eQgwYR:username::"
         },
         {
           "name": "SPRING_DATASOURCE_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret:password::"
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:810772959397:secret:small-business-db-secret-eQgwYR:password::"
         }
       ],
       "environment": [
