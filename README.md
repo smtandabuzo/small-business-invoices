@@ -1,25 +1,39 @@
 # Small Business Invoices
 
-A Spring Boot application for managing invoices and payments for small businesses. This application provides RESTful APIs to handle invoice creation, management, and payment processing.
+A Spring Boot application for managing invoices and payments for small businesses. This application provides RESTful APIs to handle invoice creation, management, and payment processing with JWT-based authentication.
 
 ## Features
 
-- Create, read, update, and delete invoices
-- Track payment status of invoices (PAID, UNPAID, OVERDUE)
-- Generate invoice reports
-- Calculate totals, taxes, and discounts
-- RESTful API endpoints for integration
-- Built with Spring Boot, JPA/Hibernate, and MySQL
-- Containerized with Docker
-- Deployable to AWS ECS with Fargate
+- **User Authentication & Authorization**
+  - JWT-based authentication
+  - Role-based access control (Admin, User)
+  - Secure password storage with BCrypt
+  - Refresh token mechanism
 
-## Prerequisites
+- **Invoice Management**
+  - Create, read, update, and delete invoices
+  - Track payment status (PAID, UNPAID, OVERDUE)
+  - Generate invoice reports
+  - Calculate totals, taxes, and discounts
+
+- **Technical Features**
+  - RESTful API endpoints
+  - Built with Spring Boot 3.x, JPA/Hibernate, and MySQL 8.0
+  - Containerized with Docker
+  - Deployable to AWS ECS with Fargate
+  - CI/CD with GitHub Actions
+  - API documentation with Swagger/OpenAPI
+  - CORS configuration for web clients
+
+## 🚀 Prerequisites
 
 - Java 17 or higher
 - Maven 3.6.3 or higher
-- MySQL 8.0 or higher (or your preferred database)
-- Lombok plugin for your IDE (for annotation processing)
-- Docker (for containerized deployment)
+- MySQL 8.0 or higher
+- Lombok plugin for your IDE
+- Docker 20.10+ and Docker Compose (for local development)
+- AWS CLI (for deployment)
+- An AWS account with ECS, ECR, and RDS access
 
 ## Getting Started
 
@@ -45,29 +59,97 @@ A Spring Boot application for managing invoices and payments for small businesse
 
    The application will start on `http://localhost:8080`
 
-## Docker Setup
+## 🐳 Docker Setup
 
-### Build the Docker Image
-```bash
-docker build -t small-business-invoices .
+### Development with Docker Compose
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/invoice_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: invoice_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
 ```
 
-### Run the Container
+### Production Build
 ```bash
-docker run -p 8080:8080 -e SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/your_database \
+# Build the application
+mvn clean package -DskipTests
+
+# Build Docker image
+docker build -t small-business-invoices .
+
+# Run with environment variables
+docker run -d \
+  -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e SPRING_DATASOURCE_URL=jdbc:mysql://your-rds-endpoint:3306/your_database \
   -e SPRING_DATASOURCE_USERNAME=your_username \
   -e SPRING_DATASOURCE_PASSWORD=your_password \
+  -e JWT_SECRET=your-secure-jwt-secret \
   small-business-invoices
 ```
 
-### Environment Variables
-When running in a container, you can configure the application using these environment variables:
+## ⚙️ Configuration
 
-- `SPRING_DATASOURCE_URL`: JDBC URL for your database
-- `SPRING_DATASOURCE_USERNAME`: Database username
-- `SPRING_DATASOURCE_PASSWORD`: Database password
-- `SPRING_PROFILES_ACTIVE`: Active Spring profile (default: `prod`)
-- `TZ`: Timezone (default: `UTC`)
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|:--------:|
+| `SPRING_PROFILES_ACTIVE` | Active profiles (dev, prod) | `prod` | No |
+| `SPRING_DATASOURCE_URL` | Database JDBC URL | - | Yes |
+| `SPRING_DATASOURCE_USERNAME` | Database username | - | Yes |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | - | Yes |
+| `JWT_SECRET` | Secret key for JWT token generation | - | Yes |
+| `JWT_EXPIRATION_MS` | JWT token expiration time in ms | `86400000` (24h) | No |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | `http://localhost:4200` | No |
+| `AWS_REGION` | AWS Region for services | `eu-north-1` | No |
+| `AWS_ACCESS_KEY_ID` | AWS Access Key | - | For AWS services |
+| `AWS_SECRET_ACCESS_KEY` | AWS Secret Key | - | For AWS services |
+
+### Security Headers
+By default, the application includes the following security headers:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security: max-age=31536000 ; includeSubDomains`
+- `Content-Security-Policy: default-src 'self'`
+
+### CORS Configuration
+CORS is configured to allow requests from specified origins. Update `CORS_ALLOWED_ORIGINS` to add your frontend URLs:
+```properties
+CORS_ALLOWED_ORIGINS=http://localhost:4200,https://your-production-domain.com
+```
 
 ## Configuration
 
@@ -89,14 +171,41 @@ API endpoints are rate limited to prevent abuse:
 - 100 requests per minute per IP for public endpoints
 - 1000 requests per minute per authenticated user
 
-## API Endpoints
+## 🔐 Authentication
+
+### Authentication Endpoints
+- `POST /api/auth/signin` - Authenticate user
+  ```json
+  {
+    "username": "user",
+    "password": "password"
+  }
+  ```
+
+- `POST /api/auth/signup` - Register new user
+  ```json
+  {
+    "username": "newuser",
+    "email": "user@example.com",
+    "password": "password123",
+    "roles": ["user"]
+  }
+  ```
+
+## 📡 API Endpoints
 
 ### Invoices
-- `GET /invoices` - Get all invoices
-- `GET /invoices/{id}` - Get invoice by ID
-- `POST /invoices` - Create a new invoice
-- `PUT /invoices/{id}` - Update an existing invoice
-- `DELETE /invoices/{id}` - Delete an invoice
+- `GET /api/invoices` - Get all invoices (requires authentication)
+- `GET /api/invoices/{id}` - Get invoice by ID
+- `POST /api/invoices` - Create a new invoice
+- `PUT /api/invoices/{id}` - Update an existing invoice
+- `DELETE /api/invoices/{id}` - Delete an invoice
+
+### Users
+- `GET /api/users` - Get all users (Admin only)
+- `GET /api/users/{id}` - Get user by ID
+- `PUT /api/users/{id}` - Update user
+- `DELETE /api/users/{id}` - Delete user (Admin only)
 
 ### Payments
 - `POST /payments` - Record a payment
