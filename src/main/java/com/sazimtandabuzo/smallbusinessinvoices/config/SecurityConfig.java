@@ -129,10 +129,8 @@ public class SecurityConfig {
                         // Allow preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
+                        .requestMatchers("/api/auth/**").permitAll()  // This allows all /api/auth/ endpoints
                         .requestMatchers(
-                                "/api/auth/signin",
-                                "/api/auth/signup",
-                                "/api/auth/register",
                                 "/error",
                                 "/h2-console/**",
                                 "/v3/api-docs/**",

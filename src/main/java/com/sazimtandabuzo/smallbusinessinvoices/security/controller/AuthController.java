@@ -46,6 +46,11 @@ public class AuthController {
     @Autowired
     JwtUtils jwtUtils;
 
+        @GetMapping("/test")
+    public ResponseEntity<?> testEndpoint() {
+        return ResponseEntity.ok("Test endpoint is working!");
+    }
+
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
