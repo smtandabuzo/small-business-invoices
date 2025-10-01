@@ -9,5 +9,4 @@ public class SmallBusinessInvoicesApplication {
     public static void main(String[] args) {
         SpringApplication.run(SmallBusinessInvoicesApplication.class, args);
     }
-
 }

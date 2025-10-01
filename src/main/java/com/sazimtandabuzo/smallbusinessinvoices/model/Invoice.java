@@ -19,17 +19,18 @@ import org.springframework.data.annotation.LastModifiedDate;
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
     
     @NotBlank(message = "Invoice number is required")
     @Size(max = 50, message = "Invoice number cannot exceed 50 characters")
-    @Column(nullable = false, unique = true)
+    @Column(name = "invoice_number", nullable = false, unique = true)
     private String invoiceNumber;
     
     @NotBlank(message = "Customer name is required")
     @Pattern(regexp = "^[a-zA-Z0-9\s.,'-]+$", message = "Customer name contains invalid characters")
     @Size(min = 2, max = 100, message = "Customer name must be between 2 and 100 characters")
-    @Column(nullable = false)
+    @Column(name = "customer_name", nullable = false)
     private String customerName;
     
     @NotBlank(message = "Email is required")
@@ -39,12 +40,12 @@ public class Invoice {
     private String customerEmail;
     
     @NotNull(message = "Issue date is required")
-    @Column(nullable = false)
+    @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
     
     @NotNull(message = "Due date is required")
     @FutureOrPresent(message = "Due date must be today or in the future")
-    @Column(nullable = false)
+    @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
     
     @NotNull(message = "Amount is required")
@@ -58,12 +59,12 @@ public class Invoice {
     @Column(name = "amount_paid", precision = 10, scale = 2)
     private BigDecimal amountPaid = BigDecimal.ZERO;
     
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PaymentStatus status;
+    @Column(name = "status", nullable = false)
+    private PaymentStatus status = PaymentStatus.PENDING;
     
     @Size(max = 1000, message = "Description cannot exceed 100 characters")
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
     
     @CreatedDate

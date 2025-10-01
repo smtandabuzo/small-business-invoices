@@ -19,6 +19,7 @@ A Spring Boot application for managing invoices and payments for small businesse
 - Maven 3.6.3 or higher
 - MySQL 8.0 or higher (or your preferred database)
 - Lombok plugin for your IDE (for annotation processing)
+- Docker (for containerized deployment)
 
 ## Getting Started
 
@@ -43,6 +44,50 @@ A Spring Boot application for managing invoices and payments for small businesse
    ```
 
    The application will start on `http://localhost:8080`
+
+## Docker Setup
+
+### Build the Docker Image
+```bash
+docker build -t small-business-invoices .
+```
+
+### Run the Container
+```bash
+docker run -p 8080:8080 -e SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/your_database \
+  -e SPRING_DATASOURCE_USERNAME=your_username \
+  -e SPRING_DATASOURCE_PASSWORD=your_password \
+  small-business-invoices
+```
+
+### Environment Variables
+When running in a container, you can configure the application using these environment variables:
+
+- `SPRING_DATASOURCE_URL`: JDBC URL for your database
+- `SPRING_DATASOURCE_USERNAME`: Database username
+- `SPRING_DATASOURCE_PASSWORD`: Database password
+- `SPRING_PROFILES_ACTIVE`: Active Spring profile (default: `prod`)
+- `TZ`: Timezone (default: `UTC`)
+
+## Configuration
+
+The application supports multiple configuration sources in the following order of precedence:
+1. Environment variables
+2. JVM system properties
+3. Config files in `/app/config/` (when running in container)
+4. Packaged application properties
+
+### Security Headers
+By default, the application includes the following security headers:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security: max-age=31536000 ; includeSubDomains`
+
+### Rate Limiting
+API endpoints are rate limited to prevent abuse:
+- 100 requests per minute per IP for public endpoints
+- 1000 requests per minute per authenticated user
 
 ## API Endpoints
 

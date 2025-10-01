@@ -29,7 +29,12 @@ public class InvoiceRequest {
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     @Digits(integer = 10, fraction = 2, message = "Amount must have up to 10 digits before and 2 after decimal")
     private BigDecimal amount;
-    
-    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
+
+    @NotBlank(message = "Status is required")
+    @Pattern(regexp = "^(PENDING|PAID|OVERDUE|CANCELLED)$", message = "Status must be one of: PENDING, PAID, OVERDUE, CANCELLED")
+    private String status;
+
+    @NotBlank(message = "Description is required")
+    @Size(max = 1000, message = "Description must be at most 1000 characters")
     private String description;
 }
